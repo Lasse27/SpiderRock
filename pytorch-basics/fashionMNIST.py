@@ -4,6 +4,9 @@ from torch.utils.data import DataLoader
 from torchvision import datasets
 from torchvision.transforms import v2
 
+device = torch.accelerator.current_accelerator().type if torch.accelerator.is_available() else "cpu" # type: ignore
+print(f"Using {device} device")
+
 training_data = datasets.FashionMNIST(
     root="data",
     train=True,
@@ -46,6 +49,9 @@ def train_loop(dataloader, model, loss_fn, optimizer):
     # Unnecessary in this situation but added for best practices
     model.train()
     for batch, (X, y) in enumerate(dataloader):
+        X = X.to(device)
+        y = y.to(device)
+        
         # Compute prediction and loss
         pred = model(X)
         loss = loss_fn(pred, y)
@@ -72,6 +78,8 @@ def test_loop(dataloader, model, loss_fn):
     # also serves to reduce unnecessary gradient computations and memory usage for tensors with requires_grad=True
     with torch.no_grad():
         for X, y in dataloader:
+            X = X.to(device)
+            y = y.to(device)
             pred = model(X)
             test_loss += loss_fn(pred, y).item()
             correct += (pred.argmax(1) == y).type(torch.float).sum().item()
@@ -83,7 +91,8 @@ def test_loop(dataloader, model, loss_fn):
     )
 
 if __name__ == "__main__":
-    model = NeuralNetwork()
+    
+    model = NeuralNetwork().to(device)
     learning_rate = 1e-3
     batch_size = 64
     loss_fn = nn.CrossEntropyLoss()

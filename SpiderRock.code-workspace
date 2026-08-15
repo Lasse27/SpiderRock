@@ -1,0 +1,18 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"name": "Research",
+			"path": "./Research"
+		},
+		{
+			"name": "SyslogRFC5424",
+			"path": "./SyslogRFC5424"
+		}
+	],
+	"settings": {
+		"python-envs.defaultEnvManager": "ms-python.python:system"
+	}
+}
