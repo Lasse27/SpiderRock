@@ -363,3 +363,4 @@ ipython_config.py
 .vscode/
 pytorch-basics/data/
 pytorch-basics/models/
+Wakeup-Word-Module/Model/Datasets/
