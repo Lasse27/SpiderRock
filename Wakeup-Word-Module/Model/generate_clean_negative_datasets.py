@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 
 import soundfile as sf
 import torch
@@ -21,7 +22,7 @@ if cuda_available:
 
 # Base path for all generated files
 THIS_FOLDER = os.path.dirname(__file__)
-DATA_PATH = rf"{THIS_FOLDER}\Datasets"
+DATA_PATH = rf"{THIS_FOLDER}\Datasets\Negative\Clean"
 WORDS_PATH = rf"{THIS_FOLDER}\Words"
 
 print("Base folder:", THIS_FOLDER)
@@ -79,15 +80,13 @@ print("Generating wav files")
 # Generate .wav for each word for each speaker
 ####################################################
 
-if not os.path.exists(DATA_PATH):
-    os.mkdir(DATA_PATH)
+Path(DATA_PATH).mkdir(parents=True, exist_ok=True)
 
 with torch.inference_mode():
     # Iterate over each speaker
     for speaker in speakers:
         SPEAKER_DIR = rf"{DATA_PATH}\{speaker}"
-        if not os.path.exists(SPEAKER_DIR):
-            os.mkdir(SPEAKER_DIR)
+        Path(SPEAKER_DIR).mkdir(parents=True, exist_ok=True)
 
         print("=" * 60)
         print("Speaker:", speaker)
