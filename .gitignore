@@ -363,6 +363,6 @@ ipython_config.py
 .vscode/
 research/pytorch-basics/data/
 research/pytorch-basics/models/
-*.wav
-*.npy
+/Modules/Wakeup-Word-Module/Model/Datasets/**/*.wav
+/Modules/Wakeup-Word-Module/Model/Datasets/**/*.npy
 annotations.csv
