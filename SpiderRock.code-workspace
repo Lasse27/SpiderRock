@@ -1,6 +1,7 @@
 {
 	"folders": [
 		{
+			"name": "SpiderRock",
 			"path": "."
 		},
 		{
@@ -8,11 +9,19 @@
 			"path": "./Research"
 		},
 		{
-			"name": "SyslogRFC5424",
-			"path": "./SyslogRFC5424"
+			"name": "Wakeup-Word-Module",
+			"path": "./Modules/Wakeup-Word-Module"
+		},
+		{
+			"name": "Speech-To-Text",
+			"path": "./Modules/Speech-To-Text-Module"
 		}
 	],
 	"settings": {
+		"editor.tabSize": 4,
+		"editor.formatOnSave": true,
+		"python.defaultInterpreterPath": "${workspaceFolder}/.venv/Scripts/python.exe",
+		"python.analysis.typeCheckingMode": "basic",
 		"python-envs.defaultEnvManager": "ms-python.python:system"
 	}
 }
