@@ -95,6 +95,7 @@ for key, (orig_noise, orig_noise_sr) in noise_files.items():
             # Immer frisch vom Original resamplen, statt die Schleifenvariable zu überschreiben
             noise = orig_noise.copy()
             if orig_noise_sr != speech_sr:
+                print("Adjusting noise sample rate: ", orig_noise_sr, "to", speech_sr)
                 noise = librosa.resample(orig_noise, orig_sr=orig_noise_sr, target_sr=speech_sr)
 
             # Extract 3 Seconds of noise
