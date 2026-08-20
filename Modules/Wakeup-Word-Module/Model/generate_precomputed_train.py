@@ -52,8 +52,8 @@ def train_data_compute_folder(basefolder, label):
             mel_spec = librosa.feature.melspectrogram(y=waveform, sr=sample_rate)
             mel_spec_db = librosa.power_to_db(mel_spec, ref=np.max)
 
-            Path(rf"{COMPUTED_FOLDER}\Train").mkdir(parents=True, exist_ok=True)
-            output_path = rf"{COMPUTED_FOLDER}\Train\{index}_{folder}.npy"
+            Path(rf"{COMPUTED_FOLDER}").mkdir(parents=True, exist_ok=True)
+            output_path = rf"{COMPUTED_FOLDER}\{index}_{folder}.npy"
             np.save(output_path, mel_spec_db)
 
             annotations.append({"id": index, "mel_file": output_path, "label": label})
@@ -74,4 +74,4 @@ print("=" * 60)
 print("Writing annotations")
 
 annotation_df = pd.DataFrame(annotations)
-annotation_df.to_csv(ANNO_FILE, index=False, mode="a")
+annotation_df.to_csv(ANNO_FILE, index=False, mode="w")
