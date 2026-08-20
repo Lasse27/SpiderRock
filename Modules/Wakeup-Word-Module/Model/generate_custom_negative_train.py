@@ -14,11 +14,11 @@ print("Config:")
 THIS_FOLDER = os.path.dirname(__file__)
 print("Base folder:", THIS_FOLDER)
 
-CUSTOM_INPUT_PATH = rf"{THIS_FOLDER}\Datasets\Custom"
+CUSTOM_INPUT_PATH = rf"{THIS_FOLDER}\Custom"
 Path(CUSTOM_INPUT_PATH).mkdir(parents=True, exist_ok=True)
 print("In folder:", CUSTOM_INPUT_PATH)
 
-CUSTOM_OUTPUT_PATH = rf"{THIS_FOLDER}\Datasets\Negative\Custom"
+CUSTOM_OUTPUT_PATH = rf"{THIS_FOLDER}\Datasets\Train\Negative\Custom"
 Path(CUSTOM_OUTPUT_PATH).mkdir(parents=True, exist_ok=True)
 print("Out folder:", CUSTOM_OUTPUT_PATH)
 
@@ -26,7 +26,11 @@ SAMPLE_RATE = 24000  # Based on clean samples
 
 custom_files = {
     # Key, Filename
-    "wigs": rf"{CUSTOM_INPUT_PATH}\Wigs.wav"
+    "wigs": rf"{CUSTOM_INPUT_PATH}\Wigs.wav",
+    "air_vent": rf"{CUSTOM_INPUT_PATH}\air_vent.wav",
+    "nature": rf"{CUSTOM_INPUT_PATH}\nature.wav",
+    "streets": rf"{CUSTOM_INPUT_PATH}\streets.wav",
+    "white_noise": rf"{CUSTOM_INPUT_PATH}\white_noise.wav",
 }
 
 

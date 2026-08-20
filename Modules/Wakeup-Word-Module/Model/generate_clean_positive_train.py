@@ -23,7 +23,7 @@ if cuda_available:
 
 # Base path for all generated files
 THIS_FOLDER = os.path.dirname(__file__)
-DATA_PATH = rf"{THIS_FOLDER}\Datasets\Positive\Clean"
+DATA_PATH = rf"{THIS_FOLDER}\Datasets\Train\Positive\Clean"
 WORDS_PATH = rf"{THIS_FOLDER}\Words"
 
 print("Base folder:", THIS_FOLDER)
@@ -113,6 +113,7 @@ with torch.inference_mode():
 
         # Iterate over each word
         for key, value in instructs:
+
             WAV_FILE = rf"{SPEAKER_DIR}\{speaker}_{key}_wakeword.wav"
             # Skip existing
             if os.path.exists(WAV_FILE):

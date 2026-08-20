@@ -6,15 +6,15 @@
 		},
 		{
 			"name": "Research",
-			"path": "./Research"
+			"path": "Research"
 		},
 		{
 			"name": "Wakeup-Word-Module",
-			"path": "./Modules/Wakeup-Word-Module"
+			"path": "Modules/Wakeup-Word-Module"
 		},
 		{
 			"name": "Speech-To-Text",
-			"path": "./Modules/Speech-To-Text-Module"
+			"path": "Modules/Speech-To-Text-Module"
 		}
 	],
 	"settings": {

@@ -364,3 +364,5 @@ ipython_config.py
 research/pytorch-basics/data/
 research/pytorch-basics/models/
 *.wav
+*.npy
+annotations.csv

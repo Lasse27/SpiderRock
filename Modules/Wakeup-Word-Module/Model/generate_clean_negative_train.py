@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 
+import librosa
 import soundfile as sf
 import torch
 from qwen_tts import Qwen3TTSModel
@@ -22,7 +23,7 @@ if cuda_available:
 
 # Base path for all generated files
 THIS_FOLDER = os.path.dirname(__file__)
-DATA_PATH = rf"{THIS_FOLDER}\Datasets\Negative\Clean"
+DATA_PATH = rf"{THIS_FOLDER}\Datasets\Train\Negative\Clean"
 WORDS_PATH = rf"{THIS_FOLDER}\Words"
 
 print("Base folder:", THIS_FOLDER)
@@ -43,26 +44,53 @@ if speakers is None:
 print("Speakers:", speakers)
 
 instructs = [
-    ("normal", ""),
+    (
+        "normal",
+        "Speak normally. Speak English.",
+    ),
     (
         "calm",
-        "Speak naturally, calmly, and clearly. Use a neutral speaking style.",
+        "Speak naturally, calmly, and clearly. Use a neutral speaking style. Speak English.",
     ),
     (
         "professional",
-        "Speak professionally, calmly, and confidently.",
+        "Speak professionally, calmly, and confidently. Speak English.",
     ),
     (
         "expressive",
-        "Speak like a professional audiobook narrator. Use expressive but natural intonation.",
+        "Speak like a professional audiobook narrator. Use expressive but natural intonation. Speak English.",
     ),
     (
         "excited",
-        "Speak with genuine excitement and enthusiasm, while remaining natural.",
+        "Speak with genuine excitement and enthusiasm, while remaining natural. Speak English.",
     ),
     (
         "angry",
-        "Speak clearly and firmly with controlled anger.",
+        "Speak clearly and firmly with controlled anger. Speak English.",
+    ),
+    (
+        "whisper",
+        "Whisper softly and quietly, as if trying not to wake someone up nearby. Speak English.",
+    ),
+    (
+        "tired",
+        "Speak slowly and tiredly, as if you just woke up or are exhausted. Speak English.",
+    ),
+    (
+        "fast",
+        "Speak quickly and casually, as if you're in a hurry. Speak English.",
+    ),
+    (
+        "shouting",
+        "Speak loudly, as if calling out to someone from across a room. Speak English.",
+    ),
+    (
+        "sad",
+        "Speak softly with a sad, subdued tone. Speak English.",
+    ),
+    (
+        "questioning",
+        "Speak with a rising, uncertain, questioning intonation, as if unsure. Speak English.",
     ),
 ]
 
@@ -107,4 +135,24 @@ with torch.inference_mode():
                     text=word, language="English", speaker=speaker, instruct=value
                 )
 
-                sf.write(WAV_FILE, wavs[0], sr)
+                # Find first occurrence of sound and last occurrence
+                # Cut off all outside silence
+                # Silence is added later manually
+                non_silent_intervalls = librosa.effects.split(wavs[0], top_db=70)
+                if len(non_silent_intervalls) == 0:
+                    print(f"No audio detected: {WAV_FILE}")
+                    sf.write(WAV_FILE, wavs[0], sr)
+
+                start = non_silent_intervalls[0][0]
+                end = non_silent_intervalls[-1][1]
+
+                # Add a small amount of silence around the speech
+                margin = int(sr * 100 / 1000)
+                start = max(0, start - margin)
+                end = min(len(wavs[0]), end + margin)
+                trimmed = wavs[0][start:end]
+
+                if len(trimmed) / sr > 1.5:
+                    print(WAV_FILE, "longer than 1,5 seconds")
+
+                sf.write(WAV_FILE, trimmed, sr)
