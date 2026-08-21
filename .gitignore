@@ -278,6 +278,7 @@ activemq-data/
 .env
 .envrc
 .venv
+.venv-kokoro/
 env/
 venv/
 ENV/
