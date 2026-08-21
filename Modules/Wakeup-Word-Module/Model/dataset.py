@@ -2,6 +2,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+import torch
 from torch.utils.data import DataLoader, Dataset
 
 
@@ -15,7 +16,11 @@ class WakeupWordDataset(Dataset):
 
     def __getitem__(self, index: int) -> tuple:
         annotation = self.annotations.iloc[index]
-        return np.load(annotation["mel_spec"]), annotation["label"]
+        mel = np.load(annotation["mel_spec"])
+        mel = torch.tensor(mel, dtype=torch.float32)
+        mel = mel.unsqueeze(0)
+        label = torch.tensor(annotation["label"], dtype=torch.float32)
+        return mel, label
 
 
 if __name__ == "__main__":
@@ -23,6 +28,8 @@ if __name__ == "__main__":
         THIS_FOLDER = Path(__file__).parent
         WORKING_DIR = Path(f"{THIS_FOLDER}/Datasets")
         data = WakeupWordDataset(WORKING_DIR, "Test")
+        print(len(data))
+
         train_dataloader = DataLoader(data, batch_size=64, shuffle=True)
         features, labels = next(iter(train_dataloader))
         print(features.shape)

@@ -102,18 +102,32 @@ generate_clean_sentences(RANDOM_SENTENCES, CLEAN_NEGATIVE)
 
 header("Generating noised negative sentences with TTS")
 WAVS_DIRECTORY = CLEAN_NEGATIVE
-NOISE_NEGATIVE = mkdir(Path(f"{TEST_POSITIVE_DIR}/SentenceN"))
+NOISE_NEGATIVE = mkdir(Path(f"{TEST_NEGATIVE_DIR}/SentenceN"))
 generate_noise_sentences(WAVS_DIRECTORY, NOISE_DIRECTORY, NOISE_NEGATIVE)
 
 header("Generating clean similar words with TTS")
 RANDOM_SENTENCES = Path(f"{WORDS_DIRECTORY}/100_similar_words.txt")
 SIMILAR_NEGATIVE = mkdir(Path(f"{TEST_NEGATIVE_DIR}/Similar"))
-generate_clean_sentences(RANDOM_SENTENCES, CLEAN_NEGATIVE)
+generate_clean_sentences(RANDOM_SENTENCES, SIMILAR_NEGATIVE)
 
 header("Generating noised similar words with TTS")
-WAVS_DIRECTORY = CLEAN_NEGATIVE
-NOISE_SIMILAR = mkdir(Path(f"{TEST_POSITIVE_DIR}/SimilarN"))
+WAVS_DIRECTORY = SIMILAR_NEGATIVE
+NOISE_SIMILAR = mkdir(Path(f"{TEST_NEGATIVE_DIR}/SimilarN"))
 generate_noise_sentences(WAVS_DIRECTORY, NOISE_DIRECTORY, NOISE_SIMILAR)
 
 header("Precomputing mel spectograms and generating anno file")
 generate_annotations_file(TEST_DIRECTORY, TEST_COMPUTE_DIR)
+
+"""
+Positive:
+Keyword-Clean: 8 * 5 = 40
+Keyword-Noise: 8 * 5 * 4 * 3 = 480
+= 520
+
+Negative:
+Sentence-Clean: 8 * 25 = 200
+Sentence-Noise: 8 * 25 * 3 * 4 = 2400
+Similar-Clean: 8 * 25 = 200
+Similar-Noise: 8 * 25 * 3 * 4 = 2400
+= 5200
+"""

@@ -45,12 +45,12 @@ log("Words directory:", WORDS_DIRECTORY)
 
 header("Generating output paths")
 DATASET_DIRECTORY = mkdir(Path(f"{THIS_DIRECTORY}/Datasets"))
-TEST_DIRECTORY = mkdir(Path(f"{DATASET_DIRECTORY}/Test"))
-TEST_POSITIVE_DIR = mkdir(Path(f"{TEST_DIRECTORY}/Positive"))
-TEST_NEGATIVE_DIR = mkdir(Path(f"{TEST_DIRECTORY}/Negative"))
-TEST_COMPUTE_DIR = mkdir(Path(f"{TEST_DIRECTORY}/Compute"))
-ANNOTATION_FILE = Path(f"{TEST_COMPUTE_DIR}/annotations.csv")
-subheader("Annotation file:", TEST_COMPUTE_DIR)
+TRAIN_DIRECTORY = mkdir(Path(f"{DATASET_DIRECTORY}/Train"))
+TRAIN_POSITIVE_DIR = mkdir(Path(f"{TRAIN_DIRECTORY}/Positive"))
+TRAIN_NEGATIVE_DIR = mkdir(Path(f"{TRAIN_DIRECTORY}/Negative"))
+TRAIN_COMPUTE_DIR = mkdir(Path(f"{TRAIN_DIRECTORY}/Compute"))
+ANNOTATION_FILE = Path(f"{TRAIN_COMPUTE_DIR}/annotations.csv")
+subheader("Annotation file:", TRAIN_COMPUTE_DIR)
 
 # ======================================================================
 # Helper methods
@@ -86,36 +86,36 @@ def generate_noise_sentences(wavs_dir: Path, noise_dir: Path, out_directory: Pat
 
 header("Generating clean positive samples with TTS")
 WAKEWORD_FILE = Path(f"{WORDS_DIRECTORY}/wakeup_word.txt")
-CLEAN_POSITIVE = mkdir(Path(f"{TEST_POSITIVE_DIR}/Single"))
+CLEAN_POSITIVE = mkdir(Path(f"{TRAIN_POSITIVE_DIR}/Single"))
 generate_clean_sentences(WAKEWORD_FILE, CLEAN_POSITIVE)
 
 header("Generating noised positive samples with librosa")
 WAVS_DIRECTORY = CLEAN_POSITIVE
-NOISE_POSITIVE = mkdir(Path(f"{TEST_POSITIVE_DIR}/SingleN"))
+NOISE_POSITIVE = mkdir(Path(f"{TRAIN_POSITIVE_DIR}/SingleN"))
 generate_noise_sentences(WAVS_DIRECTORY, NOISE_DIRECTORY, NOISE_POSITIVE)
 
 header("Generating clean negative sentences with TTS")
 RANDOM_SENTENCES = Path(f"{WORDS_DIRECTORY}/100_other_sentences.txt")
-CLEAN_NEGATIVE = mkdir(Path(f"{TEST_NEGATIVE_DIR}/Sentence"))
+CLEAN_NEGATIVE = mkdir(Path(f"{TRAIN_NEGATIVE_DIR}/Sentence"))
 generate_clean_sentences(RANDOM_SENTENCES, CLEAN_NEGATIVE)
 
 header("Generating noised negative sentences with TTS")
 WAVS_DIRECTORY = CLEAN_NEGATIVE
-NOISE_NEGATIVE = mkdir(Path(f"{TEST_POSITIVE_DIR}/SentenceN"))
+NOISE_NEGATIVE = mkdir(Path(f"{TRAIN_NEGATIVE_DIR}/SentenceN"))
 generate_noise_sentences(WAVS_DIRECTORY, NOISE_DIRECTORY, NOISE_NEGATIVE)
 
 header("Generating clean similar words with TTS")
 RANDOM_SENTENCES = Path(f"{WORDS_DIRECTORY}/100_similar_words.txt")
-SIMILAR_NEGATIVE = mkdir(Path(f"{TEST_NEGATIVE_DIR}/Similar"))
-generate_clean_sentences(RANDOM_SENTENCES, CLEAN_NEGATIVE)
+SIMILAR_NEGATIVE = mkdir(Path(f"{TRAIN_NEGATIVE_DIR}/Similar"))
+generate_clean_sentences(RANDOM_SENTENCES, SIMILAR_NEGATIVE)
 
 header("Generating noised similar words with TTS")
-WAVS_DIRECTORY = CLEAN_NEGATIVE
-NOISE_SIMILAR = mkdir(Path(f"{TEST_POSITIVE_DIR}/SimilarN"))
+WAVS_DIRECTORY = SIMILAR_NEGATIVE
+NOISE_SIMILAR = mkdir(Path(f"{TRAIN_NEGATIVE_DIR}/SimilarN"))
 generate_noise_sentences(WAVS_DIRECTORY, NOISE_DIRECTORY, NOISE_SIMILAR)
 
 header("Precomputing mel spectograms and generating anno file")
-generate_annotations_file(TEST_DIRECTORY, TEST_COMPUTE_DIR)
+generate_annotations_file(TRAIN_DIRECTORY, TRAIN_COMPUTE_DIR)
 
 """
 Train with positive labels:

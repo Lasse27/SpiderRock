@@ -215,7 +215,7 @@ def generate_annotations_file(base_dir: Path, out_dir: Path):
     tqdm.write(">>> Creating npy files.")
     records = []
     for index, file in enumerate(base_dir.rglob("*.wav")):
-        label = 1 if "positive" in [p.name for p in file.parents] else 0
+        label = 1 if "positive" in [p.name.lower() for p in file.parents] else 0
 
         try:
             # Load waveform and sample_rate
@@ -253,3 +253,4 @@ def generate_annotations_file(base_dir: Path, out_dir: Path):
     df = pd.DataFrame(records)
     df.to_csv(annotation_file, index=False, mode="w")
     tqdm.write(f"    {annotation_file.name} created.")
+    print(df["label"].value_counts())
