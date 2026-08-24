@@ -9,6 +9,8 @@ import numpy as np
 import pandas as pd
 import soundfile as sf
 import torch
+import torchaudio
+from chatterbox.tts import ChatterboxTTS
 from console_utils import *
 from kokoro import KPipeline
 from tqdm import tqdm
@@ -20,7 +22,6 @@ warnings.filterwarnings("ignore", message=".*weight_norm.*is deprecated")
 # ======================================================================
 # Constants/Setup
 # ======================================================================
-
 KOKORO_SPEED = 1.0
 KOKORO_SAMPLE_RATE = 24000
 KOKORO_LANG_CODE = "a"  # American english
@@ -63,7 +64,7 @@ N_FFT = 1024
 HOP_LENGTH = 512
 
 # ======================================================================
-# Common Helper methods
+# KOKORO GENERATION
 # ======================================================================
 
 
@@ -76,20 +77,20 @@ def generate_wav_file_kokoro(
     overwrite: bool = False,
 ):
     if not overwrite and out_file.exists():
-        tqdm.write(f"    {out_file.name} already exists. Skipping.")
+        write(f"    {out_file.name} already exists. Skipping.")
         return
 
     generator = model(sentence, voice=voice, speed=KOKORO_SPEED)
     for _, (_, _, audio) in enumerate(generator):
         max_samples = KOKORO_SAMPLE_RATE * max_sec  # 3 seconds normally
         if audio is None:
-            tqdm.write(f"    {voice}: {sentence}: No audio found!")
+            write(f"    {voice}: {sentence}: No audio found!")
             sf.write(out_file, torch.zeros(max_samples), KOKORO_SAMPLE_RATE)  # type: ignore
             continue
 
         trimmed_audio = audio[0 : min(max_samples, len(audio))]
         sf.write(out_file, trimmed_audio, KOKORO_SAMPLE_RATE)  # type: ignore
-        tqdm.write(f"    {out_file.name} created.")
+        write(f"    {out_file.name} created.")
 
 
 def generate_wav_files_kokoro(
@@ -101,7 +102,7 @@ def generate_wav_files_kokoro(
     overwrite: bool = False,
 ):
     out_directory.mkdir(parents=True, exist_ok=True)
-    tqdm.write(f">>> Creating wav files for: {voice}")
+    write(f">>> Creating wav files for: {voice}")
     for index, sentence in tqdm(
         enumerate(sentences),
         total=len(sentences),
@@ -111,6 +112,64 @@ def generate_wav_files_kokoro(
     ):
         file = Path(f"{out_directory}/{voice}_{index}.wav")
         generate_wav_file_kokoro(model, sentence, voice, file, max_sec, overwrite)
+
+
+# ======================================================================
+# CHATTERBOX GENERATION
+# ======================================================================
+
+
+def generate_wav_file_with_cloning(
+    model: ChatterboxTTS,
+    sentence: str,
+    voice_path: Path,
+    out_file: Path,
+    max_sec: int = 3,
+    overwrite: bool = False,
+):
+    if not overwrite and out_file.exists():
+        write(f"    {out_file.name} already exists. Skipping.")
+        return
+
+    wav = model.generate(sentence, audio_prompt_path=voice_path)
+    max_samples = model.sr * max_sec  # 3 seconds normally
+    if wav is None:
+        write(f"    {voice_path}: {sentence}: No audio found!")
+        sf.write(out_file, torch.zeros(max_samples), model.sr)  # type: ignore
+
+    wav_np = (
+        wav.squeeze().cpu().numpy()
+    )  # Tensor -> NumPy, von GPU auf CPU holen, Kanal-Dimension entfernen
+    trimmed_audio = wav_np[0 : min(max_samples, len(wav_np))]
+    sf.write(out_file, trimmed_audio, model.sr)
+
+
+def generate_wav_files_with_cloning(
+    model: ChatterboxTTS,
+    sentences: list,
+    voice_path: Path,
+    out_directory: Path,
+    max_sec: int = 3,
+    overwrite: bool = False,
+):
+    out_directory.mkdir(parents=True, exist_ok=True)
+    write(f">>> Creating wav files with cloning for: {voice_path}")
+    for index, sentence in tqdm(
+        enumerate(sentences),
+        total=len(sentences),
+        desc="Sentences",
+        unit="sentence",
+        leave=False,
+    ):
+        file = Path(f"{out_directory}/{voice_path.stem}_{index}.wav")
+        generate_wav_file_with_cloning(
+            model, sentence, voice_path, file, max_sec, overwrite
+        )
+
+
+# ======================================================================
+# AUGMENTATION
+# ======================================================================
 
 
 class Position(enum.Enum):
@@ -178,41 +237,41 @@ def create_files_from_noise(
     # First file
     out_file = Path(f"{out_dir}/{noise_file.stem}_start_{wavs_file.name}")
     if not override and out_file.exists():
-        tqdm.write(f"    {out_file.name} already exists. Skipping.")
+        write(f"    {out_file.name} already exists. Skipping.")
     else:
         waveform_start = resize_waveform(wavs, sr, duration, Position.START)
         noised = waveform_start + (noise * volume)
         sf.write(out_file, noised, int(sr))
-        tqdm.write(f"    {out_file.name} created.")
+        write(f"    {out_file.name} created.")
 
     # Second file
     out_file = Path(f"{out_dir}/{noise_file.stem}_middle_{wavs_file.name}")
     if not override and out_file.exists():
-        tqdm.write(f"    {out_file.name} already exists. Skipping.")
+        write(f"    {out_file.name} already exists. Skipping.")
     else:
         waveform_middle = resize_waveform(wavs, sr, duration, Position.MIDDLE)
         noised = waveform_middle + (noise * volume)
         sf.write(out_file, noised, int(sr))
-        tqdm.write(f"    {out_file.name} created.")
+        write(f"    {out_file.name} created.")
 
     # third file
     out_file = Path(f"{out_dir}/{noise_file.stem}_end_{wavs_file.name}")
     if not override and out_file.exists():
-        tqdm.write(f"    {out_file.name} already exists. Skipping.")
+        write(f"    {out_file.name} already exists. Skipping.")
     else:
         waveform_end = resize_waveform(wavs, sr, duration, Position.END)
         noised = waveform_end + (noise * volume)
         sf.write(out_file, noised, int(sr))
-        tqdm.write(f"    {out_file.name} created.")
+        write(f"    {out_file.name} created.")
 
 
 def generate_annotations_file(base_dir: Path, out_dir: Path):
-    tqdm.write(">>> Clearing output directory.")
+    write(">>> Clearing output directory.")
     out_dir.mkdir(parents=True, exist_ok=True)
     for file in out_dir.glob("*"):
         os.remove(file)
 
-    tqdm.write(">>> Creating npy files.")
+    write(">>> Creating npy files.")
     records = []
     for index, file in enumerate(base_dir.rglob("*.wav")):
         label = 1 if "positive" in [p.name.lower() for p in file.parents] else 0
@@ -237,7 +296,7 @@ def generate_annotations_file(base_dir: Path, out_dir: Path):
             mel_spec_db = librosa.power_to_db(mel_spec, ref=np.max)  # type: ignore
             mel_file = Path(f"{out_dir}/{index}.npy")
             np.save(mel_file, mel_spec_db)
-            tqdm.write(f"    {mel_file.name} created.")
+            write(f"    {mel_file.name} created.")
             records.append(
                 {
                     "index": index,
@@ -247,10 +306,10 @@ def generate_annotations_file(base_dir: Path, out_dir: Path):
             )
 
         except Exception as ex:  # noqa: BLE001
-            tqdm.write(f"    {mel_file.name}: {ex}.")
+            write(f"    {mel_file.name}: {ex}.")
 
     annotation_file = Path(f"{out_dir}/annotations.csv")
     df = pd.DataFrame(records)
     df.to_csv(annotation_file, index=False, mode="w")
-    tqdm.write(f"    {annotation_file.name} created.")
-    print(df["label"].value_counts())
+    write(f"    {annotation_file.name} created.")
+    write(df["label"].value_counts())

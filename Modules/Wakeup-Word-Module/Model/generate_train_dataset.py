@@ -10,7 +10,7 @@ from console_utils import *
 from dataset_utils import *
 from tqdm import tqdm
 
-print("Disclaimer: The execution of this script may take a while.\n")
+write("Disclaimer: The execution of this script may take a while.\n")
 
 # ======================================================================
 # Constants/Setup
@@ -26,18 +26,19 @@ TORCH_THREADS = torch.get_num_threads()
 TORCH_CUDA_ACTIVE = torch.cuda.is_available()
 TORCH_DEVICE = torch.cuda.get_device_name(0) if TORCH_CUDA_ACTIVE else "cpu"
 
-log("Threads:", TORCH_THREADS)
-log("CUDA available:", TORCH_CUDA_ACTIVE)
-log("Device:", TORCH_DEVICE)
+log(f"Threads: {TORCH_THREADS}")
+log(f"CUDA available: {TORCH_CUDA_ACTIVE}")
+log(f"Device: {TORCH_DEVICE}")
 
 subheader("Working Paths")
 THIS_DIRECTORY = Path(os.path.dirname(__file__))
 NOISE_DIRECTORY = Path(f"{THIS_DIRECTORY}/Noise/Train")
 WORDS_DIRECTORY = Path(f"{THIS_DIRECTORY}/Words")
+CLONING_DIRECTORY = Path(f"{THIS_DIRECTORY}/VoiceCloning")
 
-log("Working directory:", THIS_DIRECTORY)
-log("Noise directory:", NOISE_DIRECTORY)
-log("Words directory:", WORDS_DIRECTORY)
+log(f"Working directory: {THIS_DIRECTORY}")
+log(f"Noise directory: {NOISE_DIRECTORY}")
+log(f"Words directory: {WORDS_DIRECTORY}")
 
 # ======================================================================
 # Generating directories
@@ -50,7 +51,7 @@ TRAIN_POSITIVE_DIR = mkdir(Path(f"{TRAIN_DIRECTORY}/Positive"))
 TRAIN_NEGATIVE_DIR = mkdir(Path(f"{TRAIN_DIRECTORY}/Negative"))
 TRAIN_COMPUTE_DIR = mkdir(Path(f"{TRAIN_DIRECTORY}/Compute"))
 ANNOTATION_FILE = Path(f"{TRAIN_COMPUTE_DIR}/annotations.csv")
-subheader("Annotation file:", TRAIN_COMPUTE_DIR)
+subheader(f"Annotation file: {TRAIN_COMPUTE_DIR}")
 
 # ======================================================================
 # Helper methods
@@ -58,13 +59,17 @@ subheader("Annotation file:", TRAIN_COMPUTE_DIR)
 
 
 @torch.inference_mode(True)
-def generate_clean_sentences(sentence_file, out_directory):
+def generate_clean_sentences_kokoro(
+    sentence_file,
+    out_directory,
+    limit=50,
+):
     # Loading the words
-    subheader("Loading random words from: ", sentence_file)
+    subheader(f"Loading random words from: {sentence_file}")
     with open(sentence_file, encoding="utf-8", mode="r") as file:
         random_sentences = [line.rstrip() for line in file]
-        random_sentences = random_sentences[0:25]
-    log("Found (x):", len(random_sentences))
+        random_sentences = random_sentences[0:limit]
+    log(f"Found (x): {len(random_sentences)}")
 
     # Generating wav files
     model = KPipeline(lang_code="a", repo_id="hexgrad/Kokoro-82M")
@@ -72,8 +77,32 @@ def generate_clean_sentences(sentence_file, out_directory):
         generate_wav_files_kokoro(model, random_sentences, voice, out_directory)
 
 
-def generate_noise_sentences(wavs_dir: Path, noise_dir: Path, out_directory: Path):
-    subheader("Loading noises from: ", noise_dir)
+@torch.inference_mode(True)
+def generate_clean_sentences_chatterbox(
+    sentence_file,
+    source_directory: Path,
+    out_directory,
+    limit=50,
+):
+    # Loading the words
+    subheader(f"Loading random words from: {sentence_file}")
+    with open(sentence_file, encoding="utf-8", mode="r") as file:
+        random_sentences = [line.rstrip() for line in file]
+        random_sentences = random_sentences[0:limit]
+    log(f"Found (x): {len(random_sentences)}")
+
+    # Generating wav files
+    model = ChatterboxTTS.from_pretrained(device="cuda" if TORCH_CUDA_ACTIVE else "cpu")
+    for glob in source_directory.rglob("*.wav"):
+        generate_wav_files_with_cloning(model, random_sentences, glob, out_directory)
+
+
+def generate_noise_sentences(
+    wavs_dir: Path,
+    noise_dir: Path,
+    out_directory: Path,
+):
+    subheader(f"Loading noises from: {noise_dir}")
     for noise_file in noise_dir.rglob("*.wav"):
         tqdm.write(f">>> Noise file: {noise_file}")
         for wav_file in wavs_dir.rglob("*.wav"):
@@ -81,53 +110,62 @@ def generate_noise_sentences(wavs_dir: Path, noise_dir: Path, out_directory: Pat
 
 
 # ======================================================================
-# Generations
+# Generations of positive samples
 # ======================================================================
 
 header("Generating clean positive samples with TTS")
-WAKEWORD_FILE = Path(f"{WORDS_DIRECTORY}/wakeup_word.txt")
+WAKEWORD_FILE = Path(f"{WORDS_DIRECTORY}/100_other_wakeup_words.txt")
 CLEAN_POSITIVE = mkdir(Path(f"{TRAIN_POSITIVE_DIR}/Single"))
-generate_clean_sentences(WAKEWORD_FILE, CLEAN_POSITIVE)
+generate_clean_sentences_kokoro(WAKEWORD_FILE, CLEAN_POSITIVE)
+
+header("Generating clean positive samples with Voice cloning")
+generate_clean_sentences_chatterbox(WAKEWORD_FILE, CLONING_DIRECTORY, CLEAN_POSITIVE)
 
 header("Generating noised positive samples with librosa")
 WAVS_DIRECTORY = CLEAN_POSITIVE
 NOISE_POSITIVE = mkdir(Path(f"{TRAIN_POSITIVE_DIR}/SingleN"))
 generate_noise_sentences(WAVS_DIRECTORY, NOISE_DIRECTORY, NOISE_POSITIVE)
 
+# ======================================================================
+# Generations of negative samples
+# ======================================================================
+
 header("Generating clean negative sentences with TTS")
 RANDOM_SENTENCES = Path(f"{WORDS_DIRECTORY}/100_other_sentences.txt")
 CLEAN_NEGATIVE = mkdir(Path(f"{TRAIN_NEGATIVE_DIR}/Sentence"))
-generate_clean_sentences(RANDOM_SENTENCES, CLEAN_NEGATIVE)
+generate_clean_sentences_kokoro(RANDOM_SENTENCES, CLEAN_NEGATIVE)
+
+header("Generating clean negative sentences with Voice Cloning")
+generate_clean_sentences_chatterbox(RANDOM_SENTENCES, CLONING_DIRECTORY, CLEAN_NEGATIVE)
 
 header("Generating noised negative sentences with TTS")
 WAVS_DIRECTORY = CLEAN_NEGATIVE
 NOISE_NEGATIVE = mkdir(Path(f"{TRAIN_NEGATIVE_DIR}/SentenceN"))
 generate_noise_sentences(WAVS_DIRECTORY, NOISE_DIRECTORY, NOISE_NEGATIVE)
 
+# ======================================================================
+# Generations of negative similar samples
+# ======================================================================
+
 header("Generating clean similar words with TTS")
 RANDOM_SENTENCES = Path(f"{WORDS_DIRECTORY}/100_similar_words.txt")
 SIMILAR_NEGATIVE = mkdir(Path(f"{TRAIN_NEGATIVE_DIR}/Similar"))
-generate_clean_sentences(RANDOM_SENTENCES, SIMILAR_NEGATIVE)
+generate_clean_sentences_kokoro(RANDOM_SENTENCES, SIMILAR_NEGATIVE)
+
+header("Generating clean similar words with Voice Cloning")
+generate_clean_sentences_chatterbox(
+    RANDOM_SENTENCES, CLONING_DIRECTORY, SIMILAR_NEGATIVE
+)
 
 header("Generating noised similar words with TTS")
 WAVS_DIRECTORY = SIMILAR_NEGATIVE
 NOISE_SIMILAR = mkdir(Path(f"{TRAIN_NEGATIVE_DIR}/SimilarN"))
 generate_noise_sentences(WAVS_DIRECTORY, NOISE_DIRECTORY, NOISE_SIMILAR)
 
+
+# ======================================================================
+# Precomputation
+# ======================================================================
+
 header("Precomputing mel spectograms and generating anno file")
 generate_annotations_file(TRAIN_DIRECTORY, TRAIN_COMPUTE_DIR)
-
-"""
-Train with positive labels:
-Wakeword-Clean: 20 x 5
-Wakeword-Noise: 20 x 5 x 3 x 4
-= 1300
-+ Personal recordings
-
-
-Train with negative labels:
-Sentence-Clean: 20 x 25 x 5
-Sentence-Noise: 20 x 25 x 5 x 3 x 4
-Similar-Clean: 20 x 25 x 5
-Similar-Noise: 20 x 25 x 5 x 3 x 4
-"""

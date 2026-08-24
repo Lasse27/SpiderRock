@@ -10,7 +10,7 @@ from console_utils import *
 from dataset_utils import *
 from tqdm import tqdm
 
-print("Disclaimer: The execution of this script may take a while.\n")
+write("Disclaimer: The execution of this script may take a while.\n")
 
 # ======================================================================
 # Constants/Setup
@@ -26,18 +26,18 @@ TORCH_THREADS = torch.get_num_threads()
 TORCH_CUDA_ACTIVE = torch.cuda.is_available()
 TORCH_DEVICE = torch.cuda.get_device_name(0) if TORCH_CUDA_ACTIVE else "cpu"
 
-log("Threads:", TORCH_THREADS)
-log("CUDA available:", TORCH_CUDA_ACTIVE)
-log("Device:", TORCH_DEVICE)
+log(f"Threads: {TORCH_THREADS}")
+log(f"CUDA available: {TORCH_CUDA_ACTIVE}")
+log(f"Device: {TORCH_DEVICE}")
 
 subheader("Working Paths")
 THIS_DIRECTORY = Path(os.path.dirname(__file__))
 NOISE_DIRECTORY = Path(f"{THIS_DIRECTORY}/Noise/Test")
 WORDS_DIRECTORY = Path(f"{THIS_DIRECTORY}/Words")
 
-log("Working directory:", THIS_DIRECTORY)
-log("Noise directory:", NOISE_DIRECTORY)
-log("Words directory:", WORDS_DIRECTORY)
+log(f"Working directory: {THIS_DIRECTORY}")
+log(f"Noise directory: {NOISE_DIRECTORY}")
+log(f"Words directory: {WORDS_DIRECTORY}")
 
 # ======================================================================
 # Generating directories
@@ -50,7 +50,7 @@ TEST_POSITIVE_DIR = mkdir(Path(f"{TEST_DIRECTORY}/Positive"))
 TEST_NEGATIVE_DIR = mkdir(Path(f"{TEST_DIRECTORY}/Negative"))
 TEST_COMPUTE_DIR = mkdir(Path(f"{TEST_DIRECTORY}/Compute"))
 ANNOTATION_FILE = Path(f"{TEST_COMPUTE_DIR}/annotations.csv")
-subheader("Annotation file:", TEST_COMPUTE_DIR)
+subheader(f"Annotation file: {TEST_COMPUTE_DIR}")
 
 # ======================================================================
 # Helper methods
@@ -58,14 +58,14 @@ subheader("Annotation file:", TEST_COMPUTE_DIR)
 
 
 @torch.inference_mode(True)
-def generate_clean_sentences(sentence_file, out_directory):
+def generate_clean_sentences(sentence_file, out_directory, limit=50):
     # Loading the words
-    subheader("Loading random words from: ", sentence_file)
+    subheader(f"Loading random words from: {sentence_file}")
     with open(sentence_file, encoding="utf-8", mode="r") as file:
         random_sentences = [line.rstrip() for line in file]
-        random_sentences = random_sentences[0:25]
+        random_sentences = random_sentences[0:limit]
 
-    log("Found (x):", len(random_sentences))
+    log(f"Found (x): {len(random_sentences)}")
 
     # Generating wav files
     model = KPipeline(lang_code="b", repo_id="hexgrad/Kokoro-82M")
@@ -74,9 +74,9 @@ def generate_clean_sentences(sentence_file, out_directory):
 
 
 def generate_noise_sentences(wavs_dir: Path, noise_dir: Path, out_directory: Path):
-    subheader("Loading noises from: ", noise_dir)
+    subheader("Loading noises from: {noise_dir}")
     for noise_file in noise_dir.rglob("*.wav"):
-        tqdm.write(f">>> Noise file: {noise_file}")
+        write(f">>> Noise file: {noise_file}")
         for wav_file in wavs_dir.rglob("*.wav"):
             create_files_from_noise(wav_file, noise_file, out_directory)
 
@@ -86,7 +86,7 @@ def generate_noise_sentences(wavs_dir: Path, noise_dir: Path, out_directory: Pat
 # ======================================================================
 
 header("Generating clean positive samples with TTS")
-WAKEWORD_FILE = Path(f"{WORDS_DIRECTORY}/wakeup_word.txt")
+WAKEWORD_FILE = Path(f"{WORDS_DIRECTORY}/100_wakeup_word.txt")
 CLEAN_POSITIVE = mkdir(Path(f"{TEST_POSITIVE_DIR}/Clean"))
 generate_clean_sentences(WAKEWORD_FILE, CLEAN_POSITIVE)
 

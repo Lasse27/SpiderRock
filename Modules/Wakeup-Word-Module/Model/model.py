@@ -1,7 +1,7 @@
-from typing import Any
-
+import matplotlib.pyplot as plt
 import torch
 import torch.nn.functional as F
+from console_utils import *
 from dataset import *
 from sklearn.metrics import classification_report, confusion_matrix
 from torch import nn
@@ -80,15 +80,13 @@ def train_model(dataloader, dataset, optimizer, model, criterion, device):
         torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
         optimizer.step()
 
-        if batch % 50 == 0:
+        if batch % 100 == 0:
             loss, current = loss.item(), batch * dataloader.batch_size + len(features)  # type: ignore
-            print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
+            write(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
 
 
 @torch.inference_mode()
-def eval_model(
-    dataloader, device, model, best_f1=None, checkpoint_path="best_model.pt"
-):
+def eval_model(dataloader, device, model, best_f1=None):
     model.eval()
     true_labels, pred_labels = [], []
 
@@ -104,38 +102,39 @@ def eval_model(
     rep = classification_report(
         true_labels, pred_labels, output_dict=True, zero_division=0
     )
-    print(classification_report(true_labels, pred_labels, zero_division=0))
-    print(confusion_matrix(true_labels, pred_labels))
+    write(classification_report(true_labels, pred_labels, zero_division=0))
+    write(confusion_matrix(true_labels, pred_labels))
 
     f1_positive = rep["1"]["f1-score"]  # type: ignore
-    if best_f1 is None or f1_positive > best_f1:
-        torch.save(model.state_dict(), checkpoint_path)
-        print(f"Neues bestes Modell gespeichert (F1={f1_positive:.4f})")
-        best_f1 = f1_positive
+    RESULTS_0.loc[len(RESULTS_0)] = rep["0"]  # type: ignore
+    RESULTS_1.loc[len(RESULTS_1)] = rep["1"]  # type: ignore
+
     return best_f1, f1_positive
 
 
 if __name__ == "__main__":
-    # Lets do it
-    DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    THIS_FOLDER = Path(__file__).parent
-    WORKING_DIR = Path(f"{THIS_FOLDER}/Datasets")
+    EPOCHS = 20
     BATCH_SIZE = 64
+    THIS_FOLDER = Path(__file__).parent
+    DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    RESULTS_0 = pd.DataFrame(
+        {"f1-score": [], "precision": [], "recall": [], "support": []}
+    )
+    RESULTS_1 = pd.DataFrame(
+        {"f1-score": [], "precision": [], "recall": [], "support": []}
+    )
+
+    # Lets do it
+    WORKING_DIR = Path(f"{THIS_FOLDER}/Datasets")
     TRAIN_DATASET = WakeupWordDataset(WORKING_DIR, "Train")
     TEST_DATASET = WakeupWordDataset(WORKING_DIR, "Test")
     MODEL = WakeupWordModel().to(DEVICE)
     TRAIN_LABELS = TRAIN_DATASET.annotations["label"].value_counts(sort=False)
-    print("Train", TRAIN_LABELS)
+    write(f"Train {TRAIN_LABELS}")
     TEST_LABELS = TEST_DATASET.annotations["label"].value_counts(sort=False)
-    print("Test", TEST_LABELS)
-
-    CRITERION = nn.BCEWithLogitsLoss()
+    write(f"Test {TEST_LABELS}")
+    CRITERION = nn.BCEWithLogitsLoss(pos_weight=torch.tensor(25740 / 13000))
     OPTIMIZER = torch.optim.AdamW(MODEL.parameters(), lr=1e-4)
-
-    # nach eval_model, im Loop:
-    EPOCHS = 50
-
-    torch.backends.cudnn.benchmark = True
     TRAIN_LOADER = DataLoader(
         TRAIN_DATASET,
         batch_size=BATCH_SIZE,
@@ -152,18 +151,43 @@ if __name__ == "__main__":
         pin_memory=True,
         persistent_workers=True,
     )
+    PATIENCE = 10
+    MIN_DELTA = 0.001
+
     best_f1 = None
-    for epoch in range(EPOCHS):
-        print(f"Epoch {epoch}\n-------------------------------")
-        train_model(
-            dataloader=TRAIN_LOADER,
-            dataset=TRAIN_DATASET,
-            optimizer=OPTIMIZER,
-            model=MODEL,
-            criterion=CRITERION,
-            device=DEVICE,
-        )
-        best_f1, f1_positive = eval_model(
-            dataloader=TEST_LOADER, device=DEVICE, model=MODEL, best_f1=best_f1
-        )
-    print(best_f1)
+    epochs_without_improvement = 0
+    try:
+        for epoch in range(EPOCHS):
+
+            write(f"Epoch {epoch}\n-------------------------------")
+            train_model(
+                dataloader=TRAIN_LOADER,
+                dataset=TRAIN_DATASET,
+                optimizer=OPTIMIZER,
+                model=MODEL,
+                criterion=CRITERION,
+                device=DEVICE,
+            )
+            best_f1, f1_positive = eval_model(
+                dataloader=TEST_LOADER, device=DEVICE, model=MODEL, best_f1=best_f1
+            )
+
+            if best_f1 is None or f1_positive > best_f1:
+                torch.save(MODEL.state_dict(), "best_model.pt")
+                write(f"Neues bestes Modell gespeichert (F1={f1_positive:.4f})")
+                best_f1 = f1_positive
+                epochs_without_improvement = 0
+            else:
+                epochs_without_improvement += 1
+                write(f"Keine Verbesserung seit {epochs_without_improvement} Epoche(n)")
+
+            if epochs_without_improvement >= PATIENCE:
+                write(
+                    f"Early Stopping nach Epoche {epoch} (Patience={PATIENCE} erreicht)"
+                )
+                break
+    except Exception as ex:  # noqa: BLE001
+        print(ex)
+
+    RESULTS_0.to_csv("results_0.csv")
+    RESULTS_1.to_csv("results_1.csv")
