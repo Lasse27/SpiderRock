@@ -8,7 +8,7 @@ from torch.utils.data import DataLoader, Dataset
 
 class WakeupWordDataset(Dataset):
     def __init__(self, directory, split) -> None:
-        self.annotations_file = Path(f"{directory}/{split}/Compute/annotations.csv")
+        self.annotations_file = Path(f"{directory}/{split}/Computed/annotations.csv")
         self.annotations = pd.read_csv(self.annotations_file, encoding="UTF-8")
 
     def __len__(self):

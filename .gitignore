@@ -366,6 +366,7 @@ research/pytorch-basics/data/
 research/pytorch-basics/models/
 /Modules/Wakeup-Word-Module/Model/Datasets/**/*.wav
 /Modules/Wakeup-Word-Module/Model/Datasets/**/*.npy
+/Modules/Wakeup-Word-Module/Model/Products/**/*.npy
 /Modules/Wakeup-Word-Module/Model/VoiceCloning/**/*.wav
 /Modules/Wakeup-Word-Module/Model/VoiceCloning/**/*.npy
 annotations.csv

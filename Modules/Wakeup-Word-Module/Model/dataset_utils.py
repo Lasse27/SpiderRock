@@ -9,7 +9,6 @@ import numpy as np
 import pandas as pd
 import soundfile as sf
 import torch
-import torchaudio
 from chatterbox.tts import ChatterboxTTS
 from console_utils import *
 from kokoro import KPipeline
@@ -59,9 +58,9 @@ KOKORO_B_VOICES = [
     "bm_daniel",
 ]
 
-N_MELS = 64
-N_FFT = 1024
-HOP_LENGTH = 512
+N_MELS = 32
+N_FFT = 512
+HOP_LENGTH = 256
 
 # ======================================================================
 # KOKORO GENERATION
@@ -168,6 +167,39 @@ def generate_wav_files_with_cloning(
 
 
 # ======================================================================
+# Splits
+# ======================================================================
+
+
+def generate_noise_splits(noise_dir: Path, out_directory: Path):
+    subheader("Loading noises from: {noise_dir}")
+    for noise_file in noise_dir.rglob("*.wav"):
+        write(f">>> Noise file: {noise_file}")
+        noise, noise_sr = librosa.load(noise_file, sr=KOKORO_SAMPLE_RATE, mono=True)
+        samples_per_split = int(noise_sr) * 3  # 3 seconds
+
+        # if noise is shorter than 3 seconds, just append silence
+        if noise.size < samples_per_split:
+            zeros = np.zeros(samples_per_split)
+            zeros[0 : noise.size] = noise
+            noise = zeros
+
+        # generate splits from noise file
+        splits = []
+        index = 0
+        delimiter = index + samples_per_split
+        while delimiter < noise.size:
+            splits.append(noise[index:delimiter])
+            index = delimiter
+            delimiter = index + samples_per_split
+
+        # save all splits as their own file
+        for index, split in enumerate(splits):
+            file = Path(f"{out_directory}/{noise_file.stem}_{index}.wav")
+            sf.write(file, split, samplerate=KOKORO_SAMPLE_RATE)
+
+
+# ======================================================================
 # AUGMENTATION
 # ======================================================================
 
@@ -224,45 +256,44 @@ def create_files_from_noise(
     duration=3,
     override=False,
 ):
-    # Load file as waveform
-    wavs, sr = librosa.load(wavs_file, sr=None, mono=True)
-    noise, noise_sr = librosa.load(noise_file, sr=None, mono=True)
-
-    if sr != noise_sr:
-        noise = librosa.resample(noise, orig_sr=noise_sr, target_sr=sr)
-    noise = resize_waveform(noise, sr, duration, Position.START)
-
     out_dir.mkdir(parents=True, exist_ok=True)
-
-    # First file
     out_file = Path(f"{out_dir}/{noise_file.stem}_start_{wavs_file.name}")
     if not override and out_file.exists():
         write(f"    {out_file.name} already exists. Skipping.")
     else:
+        # Load file as waveform
+        wavs, sr = librosa.load(wavs_file, sr=None, mono=True)
+        noise, noise_sr = librosa.load(noise_file, sr=None, mono=True)
+
+        if sr != noise_sr:
+            noise = librosa.resample(noise, orig_sr=noise_sr, target_sr=sr)
+        noise = resize_waveform(noise, sr, duration, Position.START)
+
+        # First file
         waveform_start = resize_waveform(wavs, sr, duration, Position.START)
         noised = waveform_start + (noise * volume)
         sf.write(out_file, noised, int(sr))
         write(f"    {out_file.name} created.")
 
-    # Second file
-    out_file = Path(f"{out_dir}/{noise_file.stem}_middle_{wavs_file.name}")
-    if not override and out_file.exists():
-        write(f"    {out_file.name} already exists. Skipping.")
-    else:
-        waveform_middle = resize_waveform(wavs, sr, duration, Position.MIDDLE)
-        noised = waveform_middle + (noise * volume)
-        sf.write(out_file, noised, int(sr))
-        write(f"    {out_file.name} created.")
+        # Second file
+        out_file = Path(f"{out_dir}/{noise_file.stem}_middle_{wavs_file.name}")
+        if not override and out_file.exists():
+            write(f"    {out_file.name} already exists. Skipping.")
+        else:
+            waveform_middle = resize_waveform(wavs, sr, duration, Position.MIDDLE)
+            noised = waveform_middle + (noise * volume)
+            sf.write(out_file, noised, int(sr))
+            write(f"    {out_file.name} created.")
 
-    # third file
-    out_file = Path(f"{out_dir}/{noise_file.stem}_end_{wavs_file.name}")
-    if not override and out_file.exists():
-        write(f"    {out_file.name} already exists. Skipping.")
-    else:
-        waveform_end = resize_waveform(wavs, sr, duration, Position.END)
-        noised = waveform_end + (noise * volume)
-        sf.write(out_file, noised, int(sr))
-        write(f"    {out_file.name} created.")
+        # third file
+        out_file = Path(f"{out_dir}/{noise_file.stem}_end_{wavs_file.name}")
+        if not override and out_file.exists():
+            write(f"    {out_file.name} already exists. Skipping.")
+        else:
+            waveform_end = resize_waveform(wavs, sr, duration, Position.END)
+            noised = waveform_end + (noise * volume)
+            sf.write(out_file, noised, int(sr))
+            write(f"    {out_file.name} created.")
 
 
 def generate_annotations_file(base_dir: Path, out_dir: Path):
@@ -289,9 +320,10 @@ def generate_annotations_file(base_dir: Path, out_dir: Path):
             mel_spec = librosa.feature.melspectrogram(
                 y=wavs,
                 sr=sr,
-                n_mels=N_MELS,
                 n_fft=N_FFT,
                 hop_length=HOP_LENGTH,
+                n_mels=N_MELS,
+                power=2.0,
             )
             mel_spec_db = librosa.power_to_db(mel_spec, ref=np.max)  # type: ignore
             mel_file = Path(f"{out_dir}/{index}.npy")

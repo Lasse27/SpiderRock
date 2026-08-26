@@ -1,4 +1,3 @@
-import matplotlib.pyplot as plt
 import torch
 import torch.nn.functional as F
 from console_utils import *
@@ -134,7 +133,7 @@ if __name__ == "__main__":
     TEST_LABELS = TEST_DATASET.annotations["label"].value_counts(sort=False)
     write(f"Test {TEST_LABELS}")
     CRITERION = nn.BCEWithLogitsLoss(pos_weight=torch.tensor(25740 / 13000))
-    OPTIMIZER = torch.optim.AdamW(MODEL.parameters(), lr=1e-4)
+    OPTIMIZER = torch.optim.AdamW(MODEL.parameters(), lr=1e-3)
     TRAIN_LOADER = DataLoader(
         TRAIN_DATASET,
         batch_size=BATCH_SIZE,

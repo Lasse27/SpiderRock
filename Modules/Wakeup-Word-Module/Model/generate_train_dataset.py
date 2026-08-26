@@ -49,7 +49,7 @@ DATASET_DIRECTORY = mkdir(Path(f"{THIS_DIRECTORY}/Datasets"))
 TRAIN_DIRECTORY = mkdir(Path(f"{DATASET_DIRECTORY}/Train"))
 TRAIN_POSITIVE_DIR = mkdir(Path(f"{TRAIN_DIRECTORY}/Positive"))
 TRAIN_NEGATIVE_DIR = mkdir(Path(f"{TRAIN_DIRECTORY}/Negative"))
-TRAIN_COMPUTE_DIR = mkdir(Path(f"{TRAIN_DIRECTORY}/Compute"))
+TRAIN_COMPUTE_DIR = mkdir(Path(f"{TRAIN_DIRECTORY}/Computed"))
 ANNOTATION_FILE = Path(f"{TRAIN_COMPUTE_DIR}/annotations.csv")
 subheader(f"Annotation file: {TRAIN_COMPUTE_DIR}")
 
@@ -116,10 +116,12 @@ def generate_noise_sentences(
 header("Generating clean positive samples with TTS")
 WAKEWORD_FILE = Path(f"{WORDS_DIRECTORY}/100_other_wakeup_words.txt")
 CLEAN_POSITIVE = mkdir(Path(f"{TRAIN_POSITIVE_DIR}/Single"))
-generate_clean_sentences_kokoro(WAKEWORD_FILE, CLEAN_POSITIVE)
+generate_clean_sentences_kokoro(WAKEWORD_FILE, CLEAN_POSITIVE, limit=100)
 
 header("Generating clean positive samples with Voice cloning")
-generate_clean_sentences_chatterbox(WAKEWORD_FILE, CLONING_DIRECTORY, CLEAN_POSITIVE)
+generate_clean_sentences_chatterbox(
+    WAKEWORD_FILE, CLONING_DIRECTORY, CLEAN_POSITIVE, limit=100
+)
 
 header("Generating noised positive samples with librosa")
 WAVS_DIRECTORY = CLEAN_POSITIVE
@@ -162,6 +164,13 @@ WAVS_DIRECTORY = SIMILAR_NEGATIVE
 NOISE_SIMILAR = mkdir(Path(f"{TRAIN_NEGATIVE_DIR}/SimilarN"))
 generate_noise_sentences(WAVS_DIRECTORY, NOISE_DIRECTORY, NOISE_SIMILAR)
 
+# ======================================================================
+# Only noise
+# ======================================================================
+
+header("Generating only noise")
+NOISE_ONLY = mkdir(Path(f"{TRAIN_NEGATIVE_DIR}/OnlyNoise"))
+generate_noise_splits(NOISE_DIRECTORY, NOISE_ONLY)
 
 # ======================================================================
 # Precomputation
