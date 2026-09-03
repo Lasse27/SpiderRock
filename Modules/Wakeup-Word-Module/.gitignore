@@ -1,0 +1,5 @@
+Datasets/**/*.wav
+Datasets/**/*.npy
+*.csv
+*.pt
+Voices/**/*.wav

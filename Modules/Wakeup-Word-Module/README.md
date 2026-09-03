@@ -12,4 +12,4 @@ Zur Umsetzung davon kommt ein kleines CNN zum Einsatz, welches im Ordner `Model`
 Open-Source TTS Modell QwentTTS3 generiert und anschließend durch eigene Erweiterungen im Rahmen der Audioverarbeitung vorbereitet.
 
 Da das Wakeup-Word-Modul keine krassen Hardwareanforderungen hat, wird es auf einem ESP32 umgesetzt. Dabei kommt das Framework ESP-DL zur Inference des
-Modells auf dem Mikrocontroller zum Einsatz. Das ist alles in `ESP32` beschrieben.
+Modells auf dem Mikrocontroller zum Einsatz. Das ist alles in `Deployment` beschrieben.

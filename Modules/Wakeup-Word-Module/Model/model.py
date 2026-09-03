@@ -1,6 +1,5 @@
 import torch
 import torch.nn.functional as F
-from console_utils import *
 from dataset import *
 from sklearn.metrics import classification_report, confusion_matrix
 from torch import nn
@@ -32,7 +31,9 @@ class WakeupWordModel(nn.Module):
         self.dropout1 = nn.Dropout(0.5)
         self.fc1 = nn.Linear(128, 64)
         self.dropout2 = nn.Dropout(0.3)
-        self.fc2 = nn.Linear(64, 1)
+        self.fc2 = nn.Linear(64, 32)
+        self.dropout3 = nn.Dropout(0.1)
+        self.fc3 = nn.Linear(32, 1)
 
     def forward(self, x):
         # Input shape: (batch_size, n_mfcc, time_frames)
@@ -59,8 +60,9 @@ class WakeupWordModel(nn.Module):
         x = self.dropout1(x)
         x = F.relu(self.fc1(x))
         x = self.dropout2(x)
-        x = self.fc2(x)
-
+        x = F.relu(self.fc2(x))
+        x = self.dropout3(x)
+        x = self.fc3(x)
         return x
 
 
@@ -81,7 +83,7 @@ def train_model(dataloader, dataset, optimizer, model, criterion, device):
 
         if batch % 100 == 0:
             loss, current = loss.item(), batch * dataloader.batch_size + len(features)  # type: ignore
-            write(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
+            print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
 
 
 @torch.inference_mode()
@@ -101,8 +103,8 @@ def eval_model(dataloader, device, model, best_f1=None):
     rep = classification_report(
         true_labels, pred_labels, output_dict=True, zero_division=0
     )
-    write(classification_report(true_labels, pred_labels, zero_division=0))
-    write(confusion_matrix(true_labels, pred_labels))
+    print(classification_report(true_labels, pred_labels, zero_division=0))
+    print(confusion_matrix(true_labels, pred_labels))
 
     f1_positive = rep["1"]["f1-score"]  # type: ignore
     RESULTS_0.loc[len(RESULTS_0)] = rep["0"]  # type: ignore
@@ -128,10 +130,10 @@ if __name__ == "__main__":
     TRAIN_DATASET = WakeupWordDataset(WORKING_DIR, "Train")
     TEST_DATASET = WakeupWordDataset(WORKING_DIR, "Test")
     MODEL = WakeupWordModel().to(DEVICE)
-    TRAIN_LABELS = TRAIN_DATASET.annotations["label"].value_counts(sort=False)
-    write(f"Train {TRAIN_LABELS}")
-    TEST_LABELS = TEST_DATASET.annotations["label"].value_counts(sort=False)
-    write(f"Test {TEST_LABELS}")
+    TRAIN_LABELS = TRAIN_DATASET.annos["label"].value_counts(sort=False)
+    print(f"Train {TRAIN_LABELS}")
+    TEST_LABELS = TEST_DATASET.annos["label"].value_counts(sort=False)
+    print(f"Test {TEST_LABELS}")
     CRITERION = nn.BCEWithLogitsLoss(pos_weight=torch.tensor(25740 / 13000))
     OPTIMIZER = torch.optim.AdamW(MODEL.parameters(), lr=1e-3)
     TRAIN_LOADER = DataLoader(
@@ -158,7 +160,7 @@ if __name__ == "__main__":
     try:
         for epoch in range(EPOCHS):
 
-            write(f"Epoch {epoch}\n-------------------------------")
+            print(f"Epoch {epoch}\n-------------------------------")
             train_model(
                 dataloader=TRAIN_LOADER,
                 dataset=TRAIN_DATASET,
@@ -173,15 +175,15 @@ if __name__ == "__main__":
 
             if best_f1 is None or f1_positive > best_f1:
                 torch.save(MODEL.state_dict(), "best_model.pt")
-                write(f"Neues bestes Modell gespeichert (F1={f1_positive:.4f})")
+                print(f"Neues bestes Modell gespeichert (F1={f1_positive:.4f})")
                 best_f1 = f1_positive
                 epochs_without_improvement = 0
             else:
                 epochs_without_improvement += 1
-                write(f"Keine Verbesserung seit {epochs_without_improvement} Epoche(n)")
+                print(f"Keine Verbesserung seit {epochs_without_improvement} Epoche(n)")
 
             if epochs_without_improvement >= PATIENCE:
-                write(
+                print(
                     f"Early Stopping nach Epoche {epoch} (Patience={PATIENCE} erreicht)"
                 )
                 break
