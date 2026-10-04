@@ -15,6 +15,10 @@
 		{
 			"name": "Speech-To-Text",
 			"path": "Modules/Speech-To-Text-Module"
+		},
+		{
+			"name": "Armstrong",
+			"path": "Modules/Armstrong"
 		}
 	],
 	"settings": {
