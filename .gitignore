@@ -374,3 +374,5 @@ Modules/Wakeup-Word-Module/Model/VoiceCloning/*.wav
 *.pt
 .pt
 Modules/Wakeup-Word-Module/best_model.pt
+.prof
+*.prof
